@@ -13,7 +13,10 @@ export class IngestionService {
     this.prisma = getPrismaClient();
   }
 
-  async startIngestion(limit = 151) {
+  async startIngestion(limit) {
+    if (!limit || limit < 1 || limit > 1000) {
+      throw new Error('Limit is required and must be between 1 and 1000');
+    }
     // Create ingestion job
     const job = await this.prisma.ingestionJob.create({
       data: {

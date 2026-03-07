@@ -8,7 +8,7 @@ export class PokemonModel {
     this.prisma = getPrismaClient();
   }
 
-  async findAll({ page = 1, limit = 20, type = null, search = null }) {
+  async findAll({ page = 1, limit = 20, type = null, search = null, minPower = null, maxPower = null, sortBy = 'powerScore', sortOrder = 'desc' }) {
     const skip = (page - 1) * limit;
     
     const where = {
@@ -26,7 +26,18 @@ export class PokemonModel {
           },
         },
       }),
+      ...((minPower || maxPower) && {
+        powerScore: {
+          ...(minPower && { gte: parseFloat(minPower) }),
+          ...(maxPower && { lte: parseFloat(maxPower) }),
+        },
+      }),
     };
+
+    // Validate sort field
+    const validSortFields = ['powerScore', 'name', 'height', 'weight', 'baseExperience', 'createdAt'];
+    const orderByField = validSortFields.includes(sortBy) ? sortBy : 'powerScore';
+    const orderByDirection = sortOrder === 'asc' ? 'asc' : 'desc';
 
     const [pokemon, total] = await Promise.all([
       this.prisma.pokemon.findMany({
@@ -37,7 +48,7 @@ export class PokemonModel {
           abilities: true,
         },
         orderBy: {
-          powerScore: 'desc',
+          [orderByField]: orderByDirection,
         },
         skip,
         take: limit,
@@ -52,6 +63,14 @@ export class PokemonModel {
         limit,
         total,
         totalPages: Math.ceil(total / limit),
+      },
+      filters: {
+        type,
+        search,
+        minPower,
+        maxPower,
+        sortBy: orderByField,
+        sortOrder: orderByDirection,
       },
     };
   }

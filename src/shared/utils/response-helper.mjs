@@ -43,4 +43,76 @@ export class ResponseHelper {
       pagination,
     });
   }
+
+  static unauthorized(message = 'Unauthorized') {
+    return {
+      statusCode: 401,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': true,
+      },
+      body: JSON.stringify({
+        success: false,
+        error: {
+          message,
+          code: 'UNAUTHORIZED',
+        },
+      }),
+    };
+  }
+
+  static forbidden(message = 'Forbidden') {
+    return {
+      statusCode: 403,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': true,
+      },
+      body: JSON.stringify({
+        success: false,
+        error: {
+          message,
+          code: 'FORBIDDEN',
+        },
+      }),
+    };
+  }
+
+  static badRequest(message = 'Bad Request') {
+    return {
+      statusCode: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': true,
+      },
+      body: JSON.stringify({
+        success: false,
+        error: {
+          message,
+          code: 'BAD_REQUEST',
+        },
+      }),
+    };
+  }
+
+  static notFound(message = 'Not Found') {
+    return {
+      statusCode: 404,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': true,
+      },
+      body: JSON.stringify({
+        success: false,
+        error: {
+          message,
+          code: 'NOT_FOUND',
+        },
+      }),
+    };
+  }
 }

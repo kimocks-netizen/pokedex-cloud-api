@@ -10,7 +10,7 @@ export const handler = async (event) => {
     // Optional auth - public endpoint
     await optionalAuth(event);
 
-    const { page, limit, type, search } = event.queryStringParameters || {};
+    const { page, limit, type, search, minPower, maxPower, sortBy, sortOrder } = event.queryStringParameters || {};
 
     const pokemonModel = new PokemonModel();
     const result = await pokemonModel.findAll({
@@ -18,6 +18,10 @@ export const handler = async (event) => {
       limit: parseInt(limit) || 20,
       type,
       search,
+      minPower,
+      maxPower,
+      sortBy,
+      sortOrder,
     });
 
     return ResponseHelper.paginated(result.pokemon, result.pagination);

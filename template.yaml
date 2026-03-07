@@ -15,6 +15,7 @@ Globals:
         JWT_SECRET: !Sub '{{resolve:secretsmanager:${JWTSecret}:SecretString:secret}}'
         POKEAPI_BASE_URL: 'https://pokeapi.co/api/v2'
         SQS_QUEUE_URL: !Ref PokemonIngestionQueue
+        POKEMON_LIMIT: '151'
   Api:
     Cors:
       AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
@@ -110,6 +111,99 @@ Resources:
           Properties:
             Schedule: rate(5 minutes)
             Enabled: false
+
+  ManualIngestionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/ingestion/trigger.handler
+      Timeout: 300
+      Description: Manual ingestion trigger
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt PokemonIngestionQueue.QueueName
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /ingestion/trigger
+            Method: POST
+
+  # Job Management Functions
+  JobScheduleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/jobs/schedule.handler
+      Description: Create scheduled job
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /jobs/schedule
+            Method: POST
+
+  JobListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/jobs/list.handler
+      Description: List user jobs
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /jobs
+            Method: GET
+
+  JobDeleteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/jobs/delete.handler
+      Description: Delete scheduled job
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}
+            Method: DELETE
+
+  # DLQ Management Functions
+  DLQListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/dlq/list.handler
+      Description: List DLQ messages
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /dlq/messages
+            Method: GET
+
+  DLQStatsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/dlq/stats.handler
+      Description: Get DLQ statistics
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /dlq/stats
+            Method: GET
+
+  DLQRetryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/dlq/retry.handler
+      Description: Retry failed message
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt PokemonIngestionQueue.QueueName
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /dlq/messages/{id}/retry
+            Method: POST
 
   # Worker Functions
   PokemonWorkerFunction:

@@ -105,3 +105,37 @@ model WebSocketConnection {
   @@map("websocket_connections")
   @@index([userId])
 }
+
+model ScheduledJob {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  jobType     String    @map("job_type") @db.VarChar(50)
+  schedule    String    @db.VarChar(100)
+  enabled     Boolean   @default(true)
+  lastRun     DateTime? @map("last_run")
+  nextRun     DateTime? @map("next_run")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("scheduled_jobs")
+  @@index([userId])
+  @@index([enabled])
+}
+
+model FailedMessage {
+  id            String    @id @default(uuid()) @db.Uuid
+  messageId     String?   @map("message_id") @db.VarChar(255)
+  messageBody   String    @map("message_body") @db.Text
+  errorMessage  String?   @map("error_message") @db.Text
+  retryCount    Int       @default(0) @map("retry_count")
+  maxRetries    Int       @default(3) @map("max_retries")
+  status        String    @default("pending") @db.VarChar(50)
+  receivedAt    DateTime  @map("received_at")
+  lastRetryAt   DateTime? @map("last_retry_at")
+  resolvedAt    DateTime? @map("resolved_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("failed_messages")
+  @@index([status])
+  @@index([receivedAt])
+}

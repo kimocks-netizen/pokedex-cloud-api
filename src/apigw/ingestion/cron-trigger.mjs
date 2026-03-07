@@ -6,8 +6,10 @@ import { ResponseHelper } from '../../shared/utils/response-helper.mjs';
  */
 export const handler = async (event) => {
   try {
+    const limit = parseInt(process.env.POKEMON_LIMIT) || 151;
+    
     const ingestionService = new IngestionService();
-    const result = await ingestionService.startIngestion(151);
+    const result = await ingestionService.startIngestion(limit);
 
     console.log(`Ingestion job ${result.jobId} started with ${result.totalRecords} Pokemon`);
 
