@@ -217,6 +217,19 @@ Resources:
             Path: /dlq/messages/{id}/retry
             Method: POST
 
+  # User Management Functions
+  UserListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/users/list.handler
+      Description: List all users (admin only)
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /users
+            Method: GET
+
   # Worker Functions
   PokemonWorkerFunction:
     Type: AWS::Serverless::Function
