@@ -153,6 +153,18 @@ Resources:
             Path: /jobs
             Method: GET
 
+  JobToggleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/jobs/toggle.handler
+      Description: Enable/disable scheduled job
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /jobs/{id}/toggle
+            Method: PATCH
+
   JobDeleteFunction:
     Type: AWS::Serverless::Function
     Properties:
