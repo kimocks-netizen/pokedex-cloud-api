@@ -1,0 +1,97 @@
+pokedex-cloud-api/
+├── .gitignore
+├── README.md
+├── package.json
+├── package-lock.json
+├── template.yaml
+├── samconfig.toml
+├── buildspec.yml
+├── env.json
+├── .env.example
+├── tree.txt
+├── __tests__/
+│   ├── unit/
+│   │   ├── auth.test.mjs
+│   │   ├── pokemon.test.mjs
+│   │   ├── health.test.mjs
+│   │   └── ingestion.test.mjs
+│   └── integration/
+│       ├── api-flow.test.mjs
+│       └── ingestion-flow.test.mjs
+├── events/
+│   ├── auth-login.json
+│   ├── auth-register.json
+│   ├── pokemon-list.json
+│   ├── pokemon-get.json
+│   ├── health-check.json
+│   ├── ingestion-trigger.json
+│   └── sqs-worker.json
+├── prisma/
+│   ├── schema.prisma
+│   ├── seed.mjs
+│   └── migrations/
+├── scripts/
+│   ├── deploy.sh
+│   ├── seed-database.mjs
+│   ├── create-admin.mjs
+│   ├── test-endpoints.sh
+│   └── migrate-db.sh
+├── src/
+│   ├── apigw/
+│   │   ├── auth/
+│   │   │   ├── login.mjs
+│   │   │   ├── register.mjs
+│   │   │   └── validate.mjs
+│   │   ├── pokemon/
+│   │   │   ├── list.mjs
+│   │   │   ├── get-by-id.mjs
+│   │   │   ├── search.mjs
+│   │   │   └── types.mjs
+│   │   ├── health/
+│   │   │   ├── check.mjs
+│   │   │   └── system-info.mjs
+│   │   ├── ingestion/
+│   │   │   ├── trigger.mjs
+│   │   │   ├── status.mjs
+│   │   │   ├── list-jobs.mjs
+│   │   │   └── cron-trigger.mjs
+│   │   └── websocket/
+│   │       ├── connect.mjs
+│   │       ├── disconnect.mjs
+│   │       └── default.mjs
+│   ├── cron/
+│   │   ├── pokemon-worker.mjs
+│   │   └── dlq-processor.mjs
+│   └── shared/
+│       ├── config/
+│       │   ├── database.mjs
+│       │   ├── aws-clients.mjs
+│       │   └── constants.mjs
+│       ├── models/
+│       │   ├── pokemon-model.mjs
+│       │   ├── user-model.mjs
+│       │   ├── ingestion-model.mjs
+│       │   └── websocket-model.mjs
+│       ├── services/
+│       │   ├── auth-service.mjs
+│       │   ├── pokemon-service.mjs
+│       │   ├── ingestion-service.mjs
+│       │   ├── pokeapi-client.mjs
+│       │   └── websocket-service.mjs
+│       ├── middleware/
+│       │   ├── auth-middleware.mjs
+│       │   ├── cors-middleware.mjs
+│       │   ├── rate-limit.mjs
+│       │   └── request-parser.mjs
+│       └── utils/
+│           ├── response-helper.mjs
+│           ├── error-handler.mjs
+│           ├── logger.mjs
+│           ├── validators.mjs
+│           ├── retry-helper.mjs
+│           └── secrets-manager.mjs
+└── docs/
+    ├── API.md
+    ├── DEPLOYMENT.md
+    ├── DATABASE.md
+    └── DEVELOPMENT.md

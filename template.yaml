@@ -1,0 +1,174 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: PokeDex Cloud API - Serverless Pokemon API
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 512
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        DATABASE_URL: !Sub '{{resolve:secretsmanager:${DatabaseSecret}:SecretString:url}}'
+        JWT_SECRET: !Sub '{{resolve:secretsmanager:${JWTSecret}:SecretString:secret}}'
+        POKEAPI_BASE_URL: 'https://pokeapi.co/api/v2'
+        SQS_QUEUE_URL: !Ref PokemonIngestionQueue
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,Authorization'"
+      AllowOrigin: "'*'"
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+Resources:
+  # Auth Functions
+  AuthLoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/auth/login.handler
+      Description: User login
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /auth/login
+            Method: POST
+
+  AuthRegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/auth/register.handler
+      Description: User registration
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /auth/register
+            Method: POST
+
+  # Pokemon Functions
+  PokemonListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/pokemon/list.handler
+      Description: List Pokemon with pagination
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /pokemon
+            Method: GET
+
+  PokemonGetByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/pokemon/get-by-id.handler
+      Description: Get Pokemon by ID
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /pokemon/{id}
+            Method: GET
+
+  # Health Functions
+  HealthCheckFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/health/check.handler
+      Description: Health check endpoint
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /health
+            Method: GET
+
+  # Ingestion Functions
+  IngestionTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/ingestion/cron-trigger.handler
+      Timeout: 300
+      Description: Trigger Pokemon ingestion
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt PokemonIngestionQueue.QueueName
+      Events:
+        CronSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            Enabled: false
+
+  # Worker Functions
+  PokemonWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/cron/pokemon-worker.handler
+      Timeout: 60
+      Description: Process Pokemon from SQS
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt PokemonIngestionQueue.QueueName
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt PokemonIngestionQueue.Arn
+            BatchSize: 10
+
+  # SQS Queue
+  PokemonIngestionQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 'pokemon-ingestion-${Environment}'
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt PokemonDLQ.Arn
+        maxReceiveCount: 3
+
+  PokemonDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 'pokemon-ingestion-dlq-${Environment}'
+      MessageRetentionPeriod: 1209600
+
+  # Secrets
+  DatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub 'pokedex-db-${Environment}'
+      Description: PostgreSQL connection string
+      SecretString: '{"url":"postgresql://pokedex_admin:CHANGE_ME@your-rds-endpoint:5432/pokedex"}'
+
+  JWTSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub 'pokedex-jwt-${Environment}'
+      Description: JWT signing secret
+      SecretString: '{"secret":"pokedex-jwt-secret-2025-production"}'
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+  
+  QueueUrl:
+    Description: SQS Queue URL
+    Value: !Ref PokemonIngestionQueue
+  
+  DLQUrl:
+    Description: Dead Letter Queue URL
+    Value: !Ref PokemonDLQ

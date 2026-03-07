@@ -1,0 +1,107 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Pokemon {
+  id              Int       @id
+  name            String    @unique @db.VarChar(100)
+  height          Int
+  weight          Int
+  baseExperience  Int?      @map("base_experience")
+  spriteUrl       String?   @map("sprite_url") @db.Text
+  powerScore      Decimal?  @map("power_score") @db.Decimal(6, 2)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  types           PokemonType[]
+  stats           PokemonStat[]
+  abilities       PokemonAbility[]
+
+  @@map("pokemon")
+  @@index([powerScore])
+  @@index([name])
+}
+
+model PokemonType {
+  id         Int     @id @default(autoincrement())
+  pokemonId  Int     @map("pokemon_id")
+  typeName   String  @map("type_name") @db.VarChar(50)
+  slot       Int
+
+  pokemon    Pokemon @relation(fields: [pokemonId], references: [id], onDelete: Cascade)
+
+  @@map("pokemon_types")
+  @@index([typeName])
+  @@index([pokemonId])
+}
+
+model PokemonStat {
+  id         Int     @id @default(autoincrement())
+  pokemonId  Int     @map("pokemon_id")
+  statName   String  @map("stat_name") @db.VarChar(50)
+  baseStat   Int     @map("base_stat")
+  effort     Int
+
+  pokemon    Pokemon @relation(fields: [pokemonId], references: [id], onDelete: Cascade)
+
+  @@map("pokemon_stats")
+  @@index([pokemonId])
+}
+
+model PokemonAbility {
+  id          Int     @id @default(autoincrement())
+  pokemonId   Int     @map("pokemon_id")
+  abilityName String  @map("ability_name") @db.VarChar(100)
+  isHidden    Boolean @default(false) @map("is_hidden")
+  slot        Int
+
+  pokemon     Pokemon @relation(fields: [pokemonId], references: [id], onDelete: Cascade)
+
+  @@map("pokemon_abilities")
+  @@index([pokemonId])
+}
+
+model ApiUser {
+  id            String    @id @default(uuid()) @db.Uuid
+  username      String    @unique @db.VarChar(100)
+  email         String    @unique @db.VarChar(255)
+  passwordHash  String    @map("password_hash") @db.VarChar(255)
+  role          String    @default("user") @db.VarChar(50)
+  isActive      Boolean   @default(true) @map("is_active")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("api_users")
+}
+
+model IngestionJob {
+  id               String    @id @default(uuid()) @db.Uuid
+  status           String    @db.VarChar(50)
+  totalRecords     Int       @default(0) @map("total_records")
+  processedRecords Int       @default(0) @map("processed_records")
+  failedRecords    Int       @default(0) @map("failed_records")
+  startedAt        DateTime? @map("started_at")
+  completedAt      DateTime? @map("completed_at")
+  errorMessage     String?   @map("error_message") @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  @@map("ingestion_jobs")
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WebSocketConnection {
+  connectionId String   @id @map("connection_id") @db.VarChar(255)
+  userId       String?  @map("user_id") @db.Uuid
+  connectedAt  DateTime @default(now()) @map("connected_at")
+
+  @@map("websocket_connections")
+  @@index([userId])
+}
