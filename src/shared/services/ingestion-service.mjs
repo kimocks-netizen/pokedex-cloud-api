@@ -13,7 +13,7 @@ export class IngestionService {
     this.prisma = getPrismaClient();
   }
 
-  async startIngestion(limit) {
+  async startIngestion(limit, source = 'manual') {
     if (!limit || limit < 1 || limit > 1000) {
       throw new Error('Limit is required and must be between 1 and 1000');
     }
@@ -21,6 +21,7 @@ export class IngestionService {
     const job = await this.prisma.ingestionJob.create({
       data: {
         status: 'pending',
+        source,
         totalRecords: 0,
         processedRecords: 0,
         failedRecords: 0,
@@ -79,6 +80,19 @@ export class IngestionService {
       const pokemonData = this.pokeApiClient.transformPokemonData(rawData);
       
       // Save to database
+      const existingPokemon = await this.prisma.pokemon.findUnique({
+        where: { id: pokemonData.id },
+      });
+
+      if (existingPokemon) {
+        // Delete existing related data
+        await this.prisma.$transaction([
+          this.prisma.pokemonType.deleteMany({ where: { pokemonId: pokemonData.id } }),
+          this.prisma.pokemonStat.deleteMany({ where: { pokemonId: pokemonData.id } }),
+          this.prisma.pokemonAbility.deleteMany({ where: { pokemonId: pokemonData.id } }),
+        ]);
+      }
+
       await this.prisma.pokemon.upsert({
         where: { id: pokemonData.id },
         update: {
@@ -89,6 +103,15 @@ export class IngestionService {
           spriteUrl: pokemonData.spriteUrl,
           powerScore: pokemonData.powerScore,
           updatedAt: new Date(),
+          types: {
+            create: pokemonData.types,
+          },
+          stats: {
+            create: pokemonData.stats,
+          },
+          abilities: {
+            create: pokemonData.abilities,
+          },
         },
         create: {
           id: pokemonData.id,
@@ -111,22 +134,48 @@ export class IngestionService {
       });
 
       // Update job progress
-      await this.prisma.ingestionJob.update({
+      const job = await this.prisma.ingestionJob.update({
         where: { id: jobId },
         data: {
           processedRecords: { increment: 1 },
         },
       });
 
+      console.log(`Job ${jobId}: ${job.processedRecords}/${job.totalRecords} processed, ${job.failedRecords} failed`);
+
+      // Check if job is complete
+      if (job.processedRecords + job.failedRecords >= job.totalRecords) {
+        console.log(`Job ${jobId} completed!`);
+        await this.prisma.ingestionJob.update({
+          where: { id: jobId },
+          data: {
+            status: 'completed',
+            completedAt: new Date(),
+          },
+        });
+      }
+
       return { success: true, pokemonId };
     } catch (error) {
       // Update failed records count
-      await this.prisma.ingestionJob.update({
+      const job = await this.prisma.ingestionJob.update({
         where: { id: jobId },
         data: {
           failedRecords: { increment: 1 },
         },
       });
+
+      // Check if job is complete (even with failures)
+      if (job.processedRecords + job.failedRecords >= job.totalRecords) {
+        await this.prisma.ingestionJob.update({
+          where: { id: jobId },
+          data: {
+            status: job.failedRecords === job.totalRecords ? 'failed' : 'completed',
+            completedAt: new Date(),
+          },
+        });
+      }
+
       throw error;
     }
   }

@@ -21,6 +21,12 @@ export class ScheduledJobModel {
     });
   }
 
+  async findAll() {
+    return this.prisma.scheduledJob.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   async findById(id) {
     return this.prisma.scheduledJob.findUnique({
       where: { id },

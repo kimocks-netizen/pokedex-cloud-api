@@ -10,7 +10,11 @@ export const handler = async (event) => {
   try {
     await optionalAuth(event);
 
-    const { id } = event.pathParameters;
+    const { id } = event.pathParameters || {};
+    
+    if (!id) {
+      return ResponseHelper.badRequest('Pokemon ID is required');
+    }
 
     const pokemonModel = new PokemonModel();
     const pokemon = await pokemonModel.findById(id);

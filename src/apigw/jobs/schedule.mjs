@@ -10,7 +10,7 @@ export const handler = async (event) => {
     const user = await authMiddleware(event);
 
     const body = JSON.parse(event.body || '{}');
-    const { jobType, schedule } = body;
+    const { jobType, schedule, pokemonLimit = 151 } = body;
 
     // Validate required fields
     if (!jobType || !schedule) {
@@ -36,6 +36,7 @@ export const handler = async (event) => {
       userId: user.userId,
       jobType,
       schedule,
+      pokemonLimit,
       nextRun,
     });
 

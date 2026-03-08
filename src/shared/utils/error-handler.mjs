@@ -7,6 +7,7 @@ export class AppError extends Error {
     this.statusCode = statusCode;
     this.code = code;
     this.name = this.constructor.name;
+    console.error(`AppError [${code}]:`, message, { statusCode });
     Error.captureStackTrace(this, this.constructor);
   }
 }
@@ -39,4 +40,4 @@ export class ConflictError extends AppError {
   constructor(message = 'Resource already exists') {
     super(message, 409, 'CONFLICT');
   }
-}
+};

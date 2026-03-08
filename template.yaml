@@ -70,6 +70,18 @@ Resources:
             Path: /pokemon
             Method: GET
 
+  PokemonDeleteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/pokemon/delete.handler
+      Description: Delete Pokemon by IDs (admin only)
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /pokemon
+            Method: DELETE
+
   PokemonGetByIdFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -81,6 +93,18 @@ Resources:
           Properties:
             Path: /pokemon/{id}
             Method: GET
+
+  PokemonDeleteAllFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/pokemon/delete-all.handler
+      Description: Delete all Pokemon (admin only)
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /pokemon/all
+            Method: DELETE
 
   # Health Functions
   HealthCheckFunction:
@@ -126,6 +150,30 @@ Resources:
           Type: Api
           Properties:
             Path: /ingestion/trigger
+            Method: POST
+
+  IngestionJobListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/ingestion/list.handler
+      Description: List ingestion jobs
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /ingestion/jobs
+            Method: GET
+
+  IngestionJobFixFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/apigw/ingestion/fix-jobs.handler
+      Description: Fix stuck ingestion jobs
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /ingestion/jobs/fix
             Method: POST
 
   # Job Management Functions

@@ -8,8 +8,63 @@ export class PokemonModel {
     this.prisma = getPrismaClient();
   }
 
-  async findAll({ page = 1, limit = 20, type = null, search = null, minPower = null, maxPower = null, sortBy = 'powerScore', sortOrder = 'desc' }) {
+  async findAll({ page = 1, limit = 20, type = null, search = null, minPower = null, maxPower = null, minHp = null, maxHp = null, minAttack = null, maxAttack = null, minDefense = null, maxDefense = null, minSpeed = null, maxSpeed = null, sortBy = 'powerScore', sortOrder = 'desc' }) {
     const skip = (page - 1) * limit;
+    
+    // Build stat filters using AND logic
+    const statFilters = [];
+    if (minHp || maxHp) {
+      statFilters.push({
+        stats: {
+          some: {
+            statName: 'hp',
+            baseStat: {
+              ...(minHp && { gte: parseInt(minHp) }),
+              ...(maxHp && { lte: parseInt(maxHp) }),
+            },
+          },
+        },
+      });
+    }
+    if (minAttack || maxAttack) {
+      statFilters.push({
+        stats: {
+          some: {
+            statName: 'attack',
+            baseStat: {
+              ...(minAttack && { gte: parseInt(minAttack) }),
+              ...(maxAttack && { lte: parseInt(maxAttack) }),
+            },
+          },
+        },
+      });
+    }
+    if (minDefense || maxDefense) {
+      statFilters.push({
+        stats: {
+          some: {
+            statName: 'defense',
+            baseStat: {
+              ...(minDefense && { gte: parseInt(minDefense) }),
+              ...(maxDefense && { lte: parseInt(maxDefense) }),
+            },
+          },
+        },
+      });
+    }
+    if (minSpeed || maxSpeed) {
+      statFilters.push({
+        stats: {
+          some: {
+            statName: 'speed',
+            baseStat: {
+              ...(minSpeed && { gte: parseInt(minSpeed) }),
+              ...(maxSpeed && { lte: parseInt(maxSpeed) }),
+            },
+          },
+        },
+      });
+    }
     
     const where = {
       deletedAt: null,
@@ -32,10 +87,13 @@ export class PokemonModel {
           ...(maxPower && { lte: parseFloat(maxPower) }),
         },
       }),
+      ...(statFilters.length > 0 && {
+        AND: statFilters,
+      }),
     };
 
-    // Validate sort field
-    const validSortFields = ['powerScore', 'name', 'height', 'weight', 'baseExperience', 'createdAt'];
+    // Validate sort field - add stat-based sorting
+    const validSortFields = ['powerScore', 'name', 'height', 'weight', 'baseExperience', 'createdAt', 'id'];
     const orderByField = validSortFields.includes(sortBy) ? sortBy : 'powerScore';
     const orderByDirection = sortOrder === 'asc' ? 'asc' : 'desc';
 
@@ -84,6 +142,41 @@ export class PokemonModel {
         abilities: true,
       },
     });
+  }
+
+  async deleteAll() {
+    const count = await this.prisma.pokemon.count({ where: { deletedAt: null } });
+    
+    // Hard delete all Pokemon (CASCADE removes types/stats/abilities)
+    await this.prisma.pokemon.deleteMany({
+      where: { deletedAt: null },
+    });
+    
+    return count;
+  }
+
+  async deleteByIds(ids) {
+    const pokemonIds = ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+    
+    if (pokemonIds.length === 0) {
+      return 0;
+    }
+
+    const count = await this.prisma.pokemon.count({
+      where: {
+        id: { in: pokemonIds },
+        deletedAt: null,
+      },
+    });
+    
+    // Hard delete Pokemon and related data (CASCADE)
+    await this.prisma.pokemon.deleteMany({
+      where: {
+        id: { in: pokemonIds },
+      },
+    });
+    
+    return count;
   }
 
   async upsert(pokemonData) {
