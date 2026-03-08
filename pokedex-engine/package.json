@@ -1,0 +1,16 @@
+{
+  "name": "pokedex-engine",
+  "version": "1.0.0",
+  "description": "OpenSearch performance testing for PokeDex API",
+  "type": "module",
+  "scripts": {
+    "test": "node test-performance.mjs"
+  },
+  "dependencies": {
+    "@opensearch-project/opensearch": "^2.5.0",
+    "@prisma/client": "^5.9.1"
+  },
+  "devDependencies": {
+    "prisma": "^5.9.1"
+  }
+}
