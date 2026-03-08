@@ -17,6 +17,14 @@ export class IngestionService {
     if (!limit || limit < 1 || limit > 1000) {
       throw new Error('Limit is required and must be between 1 and 1000');
     }
+    
+    // Get the highest Pokemon ID currently in database
+    const maxPokemon = await this.prisma.pokemon.findFirst({
+      orderBy: { id: 'desc' },
+      select: { id: true },
+    });
+    const offset = maxPokemon ? maxPokemon.id : 0;
+    
     // Create ingestion job
     const job = await this.prisma.ingestionJob.create({
       data: {
@@ -29,8 +37,8 @@ export class IngestionService {
     });
 
     try {
-      // Fetch Pokemon list
-      const pokemonList = await this.pokeApiClient.getPokemonList(limit);
+      // Fetch Pokemon list starting from offset
+      const pokemonList = await this.pokeApiClient.getPokemonList(limit, offset);
       
       // Update job with total records
       await this.prisma.ingestionJob.update({
