@@ -1,8 +1,10 @@
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { PokeAPIClient } from './pokeapi-client.mjs';
 import { getPrismaClient } from '../config/database.mjs';
+import { WebSocketService } from './websocket-service.mjs';
 
 const sqsClient = new SQSClient({});
+const wsService = new WebSocketService();
 
 /**
  * IngestionService - Orchestrate Pokemon data ingestion
@@ -23,48 +25,43 @@ export class IngestionService {
       orderBy: { id: 'desc' },
       select: { id: true },
     });
-    const offset = maxPokemon ? maxPokemon.id : 0;
+    const startId = maxPokemon ? maxPokemon.id + 1 : 1;
     
     // Create ingestion job
     const job = await this.prisma.ingestionJob.create({
       data: {
         status: 'pending',
         source,
-        totalRecords: 0,
+        totalRecords: limit,
         processedRecords: 0,
         failedRecords: 0,
       },
     });
 
     try {
-      // Fetch Pokemon list starting from offset
-      const pokemonList = await this.pokeApiClient.getPokemonList(limit, offset);
-      
-      // Update job with total records
+      // Update job to running
       await this.prisma.ingestionJob.update({
         where: { id: job.id },
         data: {
           status: 'running',
-          totalRecords: pokemonList.results.length,
           startedAt: new Date(),
         },
       });
 
-      // Send each Pokemon to SQS for processing
-      for (const pokemon of pokemonList.results) {
-        const pokemonId = pokemon.url.split('/').filter(Boolean).pop();
+      // Send Pokemon IDs to SQS for processing
+      for (let i = 0; i < limit; i++) {
+        const pokemonId = startId + i;
         
         await sqsClient.send(new SendMessageCommand({
           QueueUrl: process.env.SQS_QUEUE_URL,
           MessageBody: JSON.stringify({
-            pokemonId: parseInt(pokemonId),
+            pokemonId,
             jobId: job.id,
-            pokemonUrl: pokemon.url,
           }),
         }));
       }
 
-      return { jobId: job.id, totalRecords: pokemonList.results.length };
+      return { jobId: job.id, totalRecords: limit };
     } catch (error) {
       // Mark job as failed
       await this.prisma.ingestionJob.update({
@@ -151,6 +148,16 @@ export class IngestionService {
 
       console.log(`Job ${jobId}: ${job.processedRecords}/${job.totalRecords} processed, ${job.failedRecords} failed`);
 
+      // Broadcast progress via WebSocket
+      await wsService.broadcast({
+        type: 'ingestion_progress',
+        jobId,
+        processed: job.processedRecords,
+        total: job.totalRecords,
+        failed: job.failedRecords,
+        status: 'running',
+      });
+
       // Check if job is complete
       if (job.processedRecords + job.failedRecords >= job.totalRecords) {
         console.log(`Job ${jobId} completed!`);
@@ -160,6 +167,16 @@ export class IngestionService {
             status: 'completed',
             completedAt: new Date(),
           },
+        });
+        
+        // Broadcast completion
+        await wsService.broadcast({
+          type: 'ingestion_complete',
+          jobId,
+          processed: job.processedRecords,
+          total: job.totalRecords,
+          failed: job.failedRecords,
+          status: 'completed',
         });
       }
 
